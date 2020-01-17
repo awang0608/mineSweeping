@@ -327,6 +327,7 @@ export default {
         // 重开一局
         reStart() {
             this.init();
+            this.setTime();
         },
         // 改变难度
         changeLevel() {
