@@ -18,8 +18,14 @@
                     :class="[lattice[(col - 1) * rows + row - 1].isOpen ? 'open' : '', lattice[(col - 1) * rows + row - 1].isMark ? 'mark' : '']"
                     @click.left="handleClickLattice(lattice[(col - 1) * rows + row - 1])"
                     @click.right.prevent="handleSureMinePoint(lattice[(col - 1) * rows + row - 1])">
-                    <span v-if="lattice[(col - 1) * rows + row - 1].isMark">❤</span>
-                    <span v-else>{{ lattice[(col - 1) * rows + row - 1].mineNum }}</span>
+                    <template v-if="over === 1">
+                        <span v-if="lattice[(col - 1) * rows + row - 1].isMine">💣</span>
+                        <span v-else>{{ lattice[(col - 1) * rows + row - 1].mineNum }}</span>
+                    </template>
+                    <template v-else>
+                        <span v-if="lattice[(col - 1) * rows + row - 1].isMark">❤</span>
+                        <span v-else>{{ lattice[(col - 1) * rows + row - 1].mineNum }}</span>
+                    </template>
                 </span>
             </div>
         </div>
@@ -164,7 +170,7 @@ export default {
         // 格子属性初始化
         initLattice() {
             let latticeArr = [];
-            for (let n = 1; n <= this.latticeNum; n++) {
+            for (let n = 0; n < this.latticeNum; n++) {
                 let lattice = {
                     index: n, 
                     isOpen: false,
@@ -200,19 +206,23 @@ export default {
         },
         // 获取格子周围的有效索引
         getLatticeIndex(index) {
+            // 0做索引不好算，按正常数字来算
+            index++;
             // 存索引值的变量
             let latticeIndexArr = [];
             // 当前格子位于第几行
             const latticeRow = Math.ceil(index / this.rows);
             // 当前格子位于第几列（求余为0说明是最右边一列）
             const latticeCol = Math.ceil(index % this.rows) || this.rows;
+            // const latticeCol = Math.ceil(index % this.rows) === 0 ? this.rows : Math.ceil(index % this.rows);
             // 第一行没有上一行，不需要计算减1的行值，最后一行没有下一行，不需要计算加1的行值
             for (let i = (latticeRow === 1 ? 0 : -1); i < (latticeRow === this.cols ? 1 : 2); i++) {
                 // 第一列没有左列，不需要计算减1的列值，最后一列没有右列，不需要计算加1的列值
                 for (let j = (latticeCol === 1 ? 0 : -1); j < (latticeCol === this.rows ? 1 : 2); j++) {
                     // 索引值 = (当前行值 + （上一行【-1】/当前行【0】/下一行【+1】） - 1【1是索引从0开始，所以需要减去】) * 每行格子数 + 当前列值 + （上一列【-1】/当前列【0】/下一列【+1】）
                     const latticeIndex = (latticeRow + i - 1) * this.rows + (latticeCol + j);
-                    latticeIndexArr.push(latticeIndex);
+                    // 初始值加了1，所以索引要减去1才对
+                    latticeIndexArr.push(latticeIndex - 1);
                 }
             }
             return latticeIndexArr;
@@ -232,7 +242,8 @@ export default {
                 return false;
             }
             // 是雷，提前结束战斗
-            if (lattice.isMine) {
+            if (!lattice.isOpen && lattice.isMine) {
+                lattice.isOpen = true;
                 this.over = 1;
             } else {
                 // 是数字
@@ -250,14 +261,18 @@ export default {
         // 右键确认是雷点
         handleSureMinePoint(lattice) {
             if (!lattice.isOpen) {
-                lattice.isMark = !lattice.isMark;
-                if (lattice.isMark) {
-                    lattice.isOpen = true;
-                    this.minePosition.splice(this.minePosition.indexOf(lattice.index), 1);
-                    this.judgeIsOver();
-                } else {
-                    this.minePosition.push(lattice.index);
-                }
+                lattice.isMark = true;
+                lattice.isOpen = true;
+                this.minePosition.splice(this.minePosition.indexOf(lattice.index), 1);
+                this.judgeIsOver();
+                // lattice.isMark = !lattice.isMark;
+                // if (lattice.isMark) {
+                //     lattice.isOpen = true;
+                //     this.minePosition.splice(this.minePosition.indexOf(lattice.index), 1);
+                //     this.judgeIsOver();
+                // } else {
+                //     this.minePosition.push(lattice.index);
+                // }
             } else {
                 if (lattice.isMark) {
                     lattice.isMark = false;
@@ -301,7 +316,7 @@ export default {
         judgeWrongMark() {
             let wrongMark = 0;
             this.minePositionBake.forEach(item => {
-                if (!this.lattice[item - 1].isMark) {
+                if (!this.lattice[item].isMark) {
                     wrongMark ++;
                 }
             });
@@ -309,9 +324,11 @@ export default {
         },
         // 展示周围的空白标记，直至边缘（格子边缘或者数字）
         showWhiteAround(lattice, latticeIndexArr) {
+            // 避免有重复的数据停不下来，去个重
             latticeIndexArr = [...new Set(latticeIndexArr)];
             for (let i = 0; i < latticeIndexArr.length; i++) {
-                const item = latticeIndexArr[i] - 1;
+                const item = latticeIndexArr[i];
+                // 计算一个少一个，减少循环
                 latticeIndexArr.splice(i, 1);
                 i--;
                 if (this.lattice[item].isOpen) {
@@ -339,6 +356,7 @@ export default {
 <style lang="scss" scoped>
 @media (max-width: 767px) {
     #app .main {
+        height: 100%;
         .tool-content-t {
             width: 100%;
         }
@@ -358,6 +376,7 @@ export default {
         }
         .game-content {
             width: 100%;
+            height: 80%;
             overflow: scroll;
         }
     }
