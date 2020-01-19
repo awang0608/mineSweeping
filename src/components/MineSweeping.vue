@@ -376,7 +376,7 @@ export default {
         }
         .game-content {
             width: 100%;
-            height: 80%;
+            max-height: 80%;
             overflow: scroll;
         }
     }
